@@ -365,7 +365,7 @@ enum xm_property_id {
 	XM_PROP_TYPEC_MODE,
 	XM_PROP_MTBF_CURRENT,
 	XM_PROP_THERMAL_TEMP,
-	XM_PROP_FB_BLANK_STATE,
+	XM_PROP_SCREEN_CCTOG,
 	XM_PROP_SMART_BATT,
 	XM_PROP_SMART_FV,
 	XM_PROP_SHIPMODE_COUNT_RESET,
@@ -1806,7 +1806,7 @@ static void usb_chg_lpd_check_work(struct work_struct *work)
 	}
 
 	rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_XM],
-			XM_PROP_FB_BLANK_STATE, bcdev->blank_state);
+			XM_PROP_SCREEN_CCTOG, bcdev->blank_state);
 	if (rc < 0) {
 			pr_err("blank_state write failed %d\n", rc);
 			return;
@@ -2190,6 +2190,42 @@ static ssize_t soc_decimal_rate_show(struct class *c,
 	return scnprintf(buf, PAGE_SIZE, "%u", pst->prop[XM_PROP_SOC_DECIMAL_RATE]);
 }
 static CLASS_ATTR_RO(soc_decimal_rate);
+
+static ssize_t screen_cctog_store(struct class *c,
+				struct class_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
+					battery_class);
+	int rc;
+	bool val;
+
+	if (kstrtobool(buf, &val))
+		return -EINVAL;
+
+	rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_XM],
+				XM_PROP_SCREEN_CCTOG, val);
+	if (rc < 0)
+		return rc;
+
+	return count;
+}
+
+static ssize_t screen_cctog_show(struct class *c,
+				struct class_attribute *attr, char *buf)
+{
+	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
+					battery_class);
+	struct psy_state *pst = &bcdev->psy_list[PSY_TYPE_XM];
+	int rc;
+
+	rc = read_property_id(bcdev, pst, XM_PROP_SCREEN_CCTOG);
+	if (rc < 0)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", pst->prop[XM_PROP_SCREEN_CCTOG]);
+}
+static CLASS_ATTR_RW(screen_cctog);
 
 static ssize_t smart_batt_store(struct class *c,
 					struct class_attribute *attr,
@@ -9903,6 +9939,7 @@ static struct attribute *battery_class_attrs[] = {
 	&class_attr_apdo_max.attr,
 	&class_attr_soc_decimal.attr,
 	&class_attr_soc_decimal_rate.attr,
+	&class_attr_screen_cctog.attr,
 	&class_attr_smart_batt.attr,
 	&class_attr_smart_fv.attr,
 	&class_attr_night_charging.attr,
